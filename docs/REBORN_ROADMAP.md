@@ -12,17 +12,18 @@ This roadmap tracks a quality-first plan for improving Saints Reborn while keepi
 
 ## Phase 1 — Graphics stability
 
-### Targets
+### Priority order
 
-- Investigate intermittent world-texture corruption and pop-in.
-- Investigate black minimap/render-target reports.
-- Reproduce the 21:9 black-screen report and distinguish presentation/aspect handling from scene-rendering failures.
-- Check whether existing GPU troubleshooting switches isolate any of these failures before changing defaults.
+1. **World-texture corruption and pop-in** — investigate the intermittent city texture reports first.
+2. **Black minimap / render-target reports** — establish whether the world scene remains healthy when the minimap fails.
+3. **General rendering regressions** — protect street-level, rooftop, interior, and shop rendering while diagnosing the first two issues.
+4. **21:9 ultrawide black scene** — keep documented as a known report, but defer active investigation unless it blocks a user or a regression points directly to aspect/framebuffer setup.
 
 ### Current evidence
 
 - Upstream [issue #28](https://github.com/whompay/SaintsReborn/issues/28) reports intermittent world-texture corruption/pop-in. A commenter reports improvement with three opt-out files; the workaround is captured, clearly labeled unverified, in [Graphics troubleshooting](GRAPHICS_TROUBLESHOOTING.md).
 - Upstream [issue #22](https://github.com/whompay/SaintsReborn/issues/22) reports an intermittently black minimap. No verified workaround is documented yet.
+- Upstream [issue #24](https://github.com/whompay/SaintsReborn/issues/24) reports a black 3D scene at 21:9 while 2D elements render. This is tracked, but it is not a current priority.
 
 ### Baseline capture
 
@@ -42,12 +43,12 @@ Do not upload game files, generated recompiled source, executables, or memory du
 | Scenario | Required check |
 |---|---|
 | 16:9, windowed and fullscreen | Boot, enter gameplay, pause/resume, change areas |
-| 21:9 ultrawide | 3D scene and 2D HUD both render; no persistent black scene |
 | Internal scale 1x / 2x / 3x | Scene, HUD, minimap, and map remain visible |
 | Interiors and shops | No new corruption, freeze, or missing scene geometry |
 | Rooftops and street level | Visibility behavior remains intentional |
 | Minimap over extended play | No intermittent black texture |
 | Exit and relaunch | No regressions to startup or save loading |
+| 21:9 ultrawide (deferred) | Revisit when higher-priority issues are stable or an affected tester is available |
 
 ## Phase 2 — Native PC usability
 
@@ -67,4 +68,4 @@ A release candidate should have a clean build, a documented test matrix, known l
 
 ## Immediate next task
 
-Establish a reproducible graphics baseline before modifying rendering behavior. Start with the existing renderer switches and logs, then make the smallest targeted fix supported by evidence.
+Review the existing texture/visibility paths and diagnostic switches against the world-texture corruption report, then identify the smallest reversible experiment. Avoid changing rendering defaults until the failure and a useful comparison case can be reproduced.
