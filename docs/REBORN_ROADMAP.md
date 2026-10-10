@@ -19,6 +19,11 @@ This roadmap tracks a quality-first plan for improving Saints Reborn while keepi
 - Reproduce the 21:9 black-screen report and distinguish presentation/aspect handling from scene-rendering failures.
 - Check whether existing GPU troubleshooting switches isolate any of these failures before changing defaults.
 
+### Current evidence
+
+- Upstream [issue #28](https://github.com/whompay/SaintsReborn/issues/28) reports intermittent world-texture corruption/pop-in. A commenter reports improvement with three opt-out files; the workaround is captured, clearly labeled unverified, in [Graphics troubleshooting](GRAPHICS_TROUBLESHOOTING.md).
+- Upstream [issue #22](https://github.com/whompay/SaintsReborn/issues/22) reports an intermittently black minimap. No verified workaround is documented yet.
+
 ### Baseline capture
 
 For every reproduction, record:
