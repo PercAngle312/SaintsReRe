@@ -68,4 +68,6 @@ A release candidate should have a clean build, a documented test matrix, known l
 
 ## Immediate next task
 
-Review the existing texture/visibility paths and diagnostic switches against the world-texture corruption report, then identify the smallest reversible experiment. Avoid changing rendering defaults until the failure and a useful comparison case can be reproduced.
+A scaled-resolve page-map reader race was identified in the SDK patch. The branch restores the existing global critical-region lock; asset-free tests compile the actual reader/lookup methods, cover cache-on/cache-off behavior and fail with the unlocked reader. GitHub source checks verify patch applicability and rerun those tests.
+
+Next, validate a full Windows build and compare world textures, minimap and pause map at 1x/2x in gameplay. The synchronization repair has not been tested in-game or confirmed as the cause of either reported symptom. Measure frame pacing because the restored lock can increase contention. Keep 21:9 work deferred.

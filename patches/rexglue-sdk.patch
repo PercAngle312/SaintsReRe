@@ -801,7 +801,7 @@ index 3bbd52e..91988af 100644
    // Render targets actually used by the draw call with the last successful
    // update. 0 is depth, color starting from 1, nullptr if not bound.
 diff --git a/include/rex/graphics/pipeline/texture/cache.h b/include/rex/graphics/pipeline/texture/cache.h
-index d26cd4f..8e4bc0b 100644
+index d26cd4f..6879328 100644
 --- a/include/rex/graphics/pipeline/texture/cache.h
 +++ b/include/rex/graphics/pipeline/texture/cache.h
 @@ -515,6 +515,20 @@ class TextureCache {
@@ -811,8 +811,8 @@ index d26cd4f..8e4bc0b 100644
 +  Texture* FindOrCreateTextureUncached(TextureKey key);
 +  // Direct-mapped cache of FindOrCreateTexture results by the requested key,
 +  // valid for one epoch. The epoch advances whenever a result could change:
-+  // bindings reset (every frame, texture destruction, outdated textures) and
-+  // resolution-scaled resolve ranges marked or unmarked.
++  // texture destruction and resolution-scaled resolve ranges marked or
++  // unmarked. Page-map reads and writes share the global critical region.
 +  struct LookupCacheEntry {
 +    TextureKey key;
 +    Texture* texture = nullptr;
@@ -7289,7 +7289,7 @@ index 953c5fd..5735463 100644
    bool dest_is_64bpp = dest.Is64bpp();
    bool host_depth_encoding_different = dest.is_depth && GetPath() == Path::kHostRenderTargets &&
 diff --git a/src/graphics/pipeline/texture/cache.cpp b/src/graphics/pipeline/texture/cache.cpp
-index 76f5600..ab6003e 100644
+index 76f5600..49c1b01 100644
 --- a/src/graphics/pipeline/texture/cache.cpp
 +++ b/src/graphics/pipeline/texture/cache.cpp
 @@ -9,8 +9,17 @@
@@ -7828,18 +7828,15 @@ index 76f5600..ab6003e 100644
    uint32_t bindings_reset = 0;
    for (size_t i = 0; i < texture_bindings_.size(); ++i) {
      TextureBinding& binding = texture_bindings_[i];
-@@ -1035,7 +1410,9 @@ bool TextureCache::IsRangeScaledResolved(uint32_t start_unscaled, uint32_t lengt
+@@ -1035,6 +1410,7 @@ bool TextureCache::IsRangeScaledResolved(uint32_t start_unscaled, uint32_t lengt
    uint32_t block_last = page_last >> 5;
    uint32_t l2_block_first = block_first >> 6;
    uint32_t l2_block_last = block_last >> 6;
--  auto global_lock = global_critical_region_.Acquire();
-+  // Read without the global critical region (the process-wide lock guest
-+  // threads contend for): a concurrent change is equivalent to one made just
-+  // before or after this check.
++  // Both levels are non-atomic and modified by CPU memory watch callbacks.
+   auto global_lock = global_critical_region_.Acquire();
    for (uint32_t i = l2_block_first; i <= l2_block_last; ++i) {
      uint64_t l2_block = scaled_resolve_pages_l2_[i];
-     if (i == l2_block_first) {
-@@ -1079,6 +1456,7 @@ void TextureCache::ScaledResolveGlobalWatchCallback(
+@@ -1079,6 +1455,7 @@ void TextureCache::ScaledResolveGlobalWatchCallback(
      // Resolves themselves do exactly the opposite of what this should do.
      return;
    }
@@ -7847,7 +7844,7 @@ index 76f5600..ab6003e 100644
    // Mark scaled resolve ranges as non-scaled. Textures themselves will be
    // invalidated by their shared memory watches.
    uint32_t resolve_page_first = address_first >> 12;
-@@ -1109,6 +1487,9 @@ void TextureCache::ScaledResolveGlobalWatchCallback(
+@@ -1109,6 +1486,9 @@ void TextureCache::ScaledResolveGlobalWatchCallback(
        if (resolve_block_index == resolve_block_last && (resolve_page_last & 31) != 31) {
          resolve_keep_bits |= ~((UINT32_C(1) << ((resolve_page_last & 31) + 1)) - 1);
        }

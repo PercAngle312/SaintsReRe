@@ -59,3 +59,28 @@ Include:
 - Relevant log lines and whether the symptom survives a restart
 
 A workaround should not be called a fix until the original failure has been reproduced and the result verified.
+
+## Resolve-page synchronization investigation
+
+Source inspection found that the SDK patch allowed texture lookup to read
+non-atomic scaled-resolve page maps concurrently with CPU memory callbacks.
+The callback advances the lookup epoch before clearing the page bits; a reader
+could observe the new epoch with the old bits and cache an outdated scaled
+texture classification. Ordinary world textures and resolved map textures
+share this classification path when guest memory is reused.
+
+The development branch now restores the page-map reader lock. The lookup
+epoch is sampled before the locked classification read, so a CPU callback
+cannot leave old page bits cached at its new epoch.
+Asset-free regression checks exercise the reader/writer interleaving with
+cache lookup enabled and disabled. This is a verified synchronization repair,
+**not a confirmed fix for the reported world corruption or black minimap**.
+The checks use the actual SDK reader methods with a substitute backend;
+D3D12 behavior, full build compatibility and gameplay remain unverified.
+
+Before calling either gameplay issue fixed, compare the same route and save
+before/after the change at 1x and 2x, recording world textures, minimap, pause
+map and frame pacing. The added lock may increase CPU contention, so include
+performance observations. Keep the draft PR unmerged until those checks pass.
+The patch hash already invalidates setup's SDK build stamp; updating and
+rerunning setup rebuilds the SDK without requiring a manifest change.

@@ -1,0 +1,46 @@
+name: Graphics source checks
+
+on:
+  push:
+    paths:
+      - "patches/rexglue-sdk.patch"
+      - "scripts/setup.ps1"
+      - "tests/graphics/**"
+      - ".github/workflows/graphics-checks.yml"
+  pull_request:
+    paths:
+      - "patches/rexglue-sdk.patch"
+      - "scripts/setup.ps1"
+      - "tests/graphics/**"
+      - ".github/workflows/graphics-checks.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  texture-classification:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Read the SDK revision used by setup
+        id: sdk
+        run: |
+          python3 - <<'PY'
+          import os, re
+          from pathlib import Path
+          source = Path('scripts/setup.ps1').read_text()
+          revision = re.search(r'\$SdkCommit = "([0-9a-f]{40})"', source).group(1)
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              output.write(f'revision={revision}\n')
+          PY
+      - name: Check the complete SDK patch against the pinned revision
+        env:
+          SDK_REVISION: ${{ steps.sdk.outputs.revision }}
+        run: |
+          git clone --filter=blob:none --no-checkout https://github.com/rexglue/rexglue-sdk.git build/rexglue-sdk
+          git -C build/rexglue-sdk checkout --detach "$SDK_REVISION"
+          git -C build/rexglue-sdk apply --check ../../patches/rexglue-sdk.patch
+          git -C build/rexglue-sdk apply ../../patches/rexglue-sdk.patch
+      - name: Compile and run asset-free texture regression checks
+        run: python3 tests/graphics/check_texture_cache.py build/rexglue-sdk
